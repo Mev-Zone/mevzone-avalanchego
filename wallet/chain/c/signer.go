@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ava-labs/coreth/plugin/evm/atomic"
 	"github.com/ava-labs/libevm/common"
+	"github.com/mev-zone/coreth-validator/plugin/evm/atomic"
 
 	"github.com/ava-labs/avalanchego/database"
 	"github.com/ava-labs/avalanchego/ids"
