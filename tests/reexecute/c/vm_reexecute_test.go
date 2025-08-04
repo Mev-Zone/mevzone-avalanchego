@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ava-labs/coreth/plugin/factory"
+	"github.com/mev-zone/coreth-validator/plugin/factory"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
