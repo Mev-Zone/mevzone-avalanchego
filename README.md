@@ -82,15 +82,10 @@ $HOME/.avalanchego/configs/chains/$CHAIN_ID/config.json
 ```
 ```json
 {
-   // Enables extra internal namespaces so builders can submit bundles over the C-Chain RPC.
-  "eth-apis": [
-    "internal-mev"
-  ],
-
+  // Turns the MEV auction logic on for this validator.
+  "mev-api-enabled": true,
   // MEV parameters
   "mev": {
-    // Turns the MEV auction logic on for this validator.
-    "enabled": true,
     // Whitelisted builder relay(s) – address must match the signer of the bundles it relays.
     "builders": [
       {
