@@ -480,6 +480,8 @@ github.com/mattn/go-shellwords v1.0.12/go.mod h1:EZzvwXDESEeg03EKmM+RmDnNOPKG4lL
 github.com/mattn/goveralls v0.0.2/go.mod h1:8d1ZMHsd7fW6IRPKQh46F2WRpyib5/X4FOpevwGNQEw=
 github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
 github.com/mediocregopher/radix/v3 v3.4.2/go.mod h1:8FL3F6UQRXHXIBSPUs5h0RybMF8i4n7wVopoX3x7Bv8=
+github.com/mev-zone/coreth-validator v0.15.1-rc1 h1:vFvdb2LWgSwZFCEXOPFUc0Bby3uLehsL+Z0PXS4MFOc=
+github.com/mev-zone/coreth-validator v0.15.1-rc1/go.mod h1:NTJZ1zRec0/lQtzYJe9YAS94RGZlCJR6JitNZcu2SWI=
 github.com/mev-zone/coreth-validator v1.13.3 h1:COxlU3HbIWKbp3hdrkZWBP7tb8dqMBzdRm4vTHu0eiI=
 github.com/mev-zone/coreth-validator v1.13.3/go.mod h1:6s3yYlHSVRY2RL4//4IxzCPdwjb8fRptsYStIJMZNi4=
 github.com/microcosm-cc/bluemonday v1.0.2/go.mod h1:iVP4YcDBq+n/5fb23BhYFvIMq/leAFZyRl6bYmGDlGc=
