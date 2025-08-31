@@ -83,7 +83,7 @@ import (
 	databasefactory "github.com/ava-labs/avalanchego/database/factory"
 	avmconfig "github.com/ava-labs/avalanchego/vms/avm/config"
 	platformconfig "github.com/ava-labs/avalanchego/vms/platformvm/config"
-	coreth "github.com/mev-zone/coreth-validator/plugin/factory"
+	coreth "github.com/mev-zone/coreth/plugin/factory"
 )
 
 const (

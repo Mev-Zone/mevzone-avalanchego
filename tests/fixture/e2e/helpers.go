@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/ava-labs/libevm/core/types"
-	"github.com/mev-zone/coreth-validator/ethclient"
+	"github.com/mev-zone/coreth/ethclient"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
@@ -209,7 +209,7 @@ func SuggestGasPrice(tc tests.TestContext, ethClient *ethclient.Client) *big.Int
 
 	// Double the suggested gas price to maximize the chances of
 	// acceptance. Maybe this can be revisited pending resolution of
-	// https://github.com/mev-zone/coreth-validator/issues/314.
+	// https://github.com/ava-labs/coreth/issues/314.
 	gasPrice.Add(gasPrice, gasPrice)
 	return gasPrice
 }

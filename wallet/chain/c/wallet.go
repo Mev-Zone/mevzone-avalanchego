@@ -8,9 +8,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/mev-zone/coreth-validator/ethclient"
-	"github.com/mev-zone/coreth-validator/plugin/evm/atomic"
-	"github.com/mev-zone/coreth-validator/plugin/evm/client"
+	"github.com/mev-zone/coreth/ethclient"
+	"github.com/mev-zone/coreth/plugin/evm/atomic"
+	"github.com/mev-zone/coreth/plugin/evm/client"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/rpc"

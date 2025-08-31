@@ -7,9 +7,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mev-zone/coreth-validator/ethclient"
-	"github.com/mev-zone/coreth-validator/plugin/evm/atomic"
-	"github.com/mev-zone/coreth-validator/plugin/evm/client"
+	"github.com/mev-zone/coreth/ethclient"
+	"github.com/mev-zone/coreth/plugin/evm/atomic"
+	"github.com/mev-zone/coreth/plugin/evm/client"
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/codec"

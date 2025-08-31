@@ -33,7 +33,6 @@ require (
 	github.com/jackpal/gateway v1.0.6
 	github.com/jackpal/go-nat-pmp v1.0.2
 	github.com/leanovate/gopter v0.2.9
-	github.com/mev-zone/coreth v0.15.4-mevzone
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
@@ -80,6 +79,12 @@ require (
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.29.0
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b
+)
+
+require (
+	github.com/fjl/gencodec v0.1.1 // indirect
+	github.com/garslo/gogen v0.0.0-20170306192744-1d203ffc1f61 // indirect
+	github.com/mev-zone/coreth v0.15.4-mevzone // indirect
 )
 
 require (
