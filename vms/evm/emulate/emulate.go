@@ -8,7 +8,7 @@
 package emulate
 
 import (
-	cchain "github.com/ava-labs/coreth/plugin/evm"
+	cchain "github.com/mev-zone/coreth/plugin/evm"
 	subnet "github.com/ava-labs/subnet-evm/plugin/evm"
 )
 
