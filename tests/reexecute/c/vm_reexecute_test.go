@@ -6,18 +6,20 @@ package vm
 import (
 	"context"
 	"encoding/binary"
-	"errors"
 	"flag"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/mev-zone/coreth/plugin/evm"
 	"github.com/mev-zone/coreth/plugin/factory"
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -58,14 +60,19 @@ var (
 	startBlockArg      uint64
 	endBlockArg        uint64
 	chanSizeArg        int
-	metricsEnabledArg  bool
 	executionTimeout   time.Duration
 	labelsArg          string
 
-	labels = map[string]string{
+	metricsServerEnabledArg    bool
+	metricsServerPortArg       uint64
+	metricsCollectorEnabledArg bool
+
+	networkUUID string = uuid.NewString()
+	labels             = map[string]string{
 		"job":               "c-chain-reexecution",
 		"is_ephemeral_node": "false",
 		"chain":             "C",
+		"network_uuid":      networkUUID,
 	}
 
 	configKey         = "config"
@@ -84,10 +91,13 @@ var (
 	}
 
 	configNameArg  string
+	runnerNameArg  string
 	configBytesArg []byte
 )
 
 func TestMain(m *testing.M) {
+	evm.RegisterAllLibEVMExtras()
+
 	flag.StringVar(&blockDirArg, "block-dir", blockDirArg, "Block DB directory to read from during re-execution.")
 	flag.StringVar(&currentStateDirArg, "current-state-dir", currentStateDirArg, "Current state directory including VM DB and Chain Data Directory for re-execution.")
 	flag.Uint64Var(&startBlockArg, "start-block", 101, "Start block to begin execution (exclusive).")
@@ -95,12 +105,15 @@ func TestMain(m *testing.M) {
 	flag.IntVar(&chanSizeArg, "chan-size", 100, "Size of the channel to use for block processing.")
 	flag.DurationVar(&executionTimeout, "execution-timeout", 0, "Benchmark execution timeout. After this timeout has elapsed, terminate the benchmark without error. If 0, no timeout is applied.")
 
-	flag.BoolVar(&metricsEnabledArg, "metrics-enabled", true, "Enable metrics collection.")
+	flag.BoolVar(&metricsServerEnabledArg, "metrics-server-enabled", false, "Whether to enable the metrics server.")
+	flag.Uint64Var(&metricsServerPortArg, "metrics-server-port", 0, "The port the metrics server will listen to.")
+	flag.BoolVar(&metricsCollectorEnabledArg, "metrics-collector-enabled", false, "Whether to enable the metrics collector (if true, then metrics-server-enabled must be true as well).")
 	flag.StringVar(&labelsArg, "labels", "", "Comma separated KV list of metric labels to attach to all exported metrics. Ex. \"owner=tim,runner=snoopy\"")
 
 	predefinedConfigKeys := slices.Collect(maps.Keys(predefinedConfigs))
 	predefinedConfigOptionsStr := fmt.Sprintf("[%s]", strings.Join(predefinedConfigKeys, ", "))
 	flag.StringVar(&configNameArg, configKey, defaultConfigKey, fmt.Sprintf("Specifies the predefined config to use for the VM. Options include %s.", predefinedConfigOptionsStr))
+	flag.StringVar(&runnerNameArg, "runner", "dev", "Name of the runner executing this test. Added as a metric label and to the sub-benchmark's name to differentiate results on the runner key.")
 
 	// Flags specific to TestExportBlockRange.
 	flag.StringVar(&blockDirSrcArg, "block-dir-src", blockDirSrcArg, "Source block directory to copy from when running TestExportBlockRange.")
@@ -108,7 +121,11 @@ func TestMain(m *testing.M) {
 
 	flag.Parse()
 
-	customLabels, err := parseLabels(labelsArg)
+	if metricsCollectorEnabledArg {
+		metricsServerEnabledArg = true
+	}
+
+	customLabels, err := parseCustomLabels(labelsArg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to parse labels: %v\n", err)
 		os.Exit(1)
@@ -124,19 +141,44 @@ func TestMain(m *testing.M) {
 	labels[configKey] = configNameArg
 	configBytesArg = []byte(predefinedConfigStr)
 
+	// Set the runner name label on the metrics.
+	labels["runner"] = runnerNameArg
+
 	m.Run()
 }
 
 func BenchmarkReexecuteRange(b *testing.B) {
 	require.Equalf(b, 1, b.N, "BenchmarkReexecuteRange expects to run a single iteration because it overwrites the input current-state, but found (b.N=%d)", b.N)
-	b.Run(fmt.Sprintf("[%d,%d]-Config-%s", startBlockArg, endBlockArg, configNameArg), func(b *testing.B) {
-		benchmarkReexecuteRange(b, blockDirArg, currentStateDirArg, configBytesArg, startBlockArg, endBlockArg, chanSizeArg, metricsEnabledArg)
+	b.Run(fmt.Sprintf("[%d,%d]-Config-%s-Runner-%s", startBlockArg, endBlockArg, configNameArg, runnerNameArg), func(b *testing.B) {
+		benchmarkReexecuteRange(
+			b,
+			blockDirArg,
+			currentStateDirArg,
+			configBytesArg,
+			startBlockArg,
+			endBlockArg,
+			chanSizeArg,
+			metricsServerEnabledArg,
+			metricsServerPortArg,
+			metricsCollectorEnabledArg,
+		)
 	})
 }
 
-func benchmarkReexecuteRange(b *testing.B, blockDir string, currentStateDir string, configBytes []byte, startBlock uint64, endBlock uint64, chanSize int, metricsEnabled bool) {
+func benchmarkReexecuteRange(
+	b *testing.B,
+	blockDir string,
+	currentStateDir string,
+	configBytes []byte,
+	startBlock uint64,
+	endBlock uint64,
+	chanSize int,
+	metricsServerEnabled bool,
+	metricsPort uint64,
+	metricsCollectorEnabled bool,
+) {
 	r := require.New(b)
-	ctx := context.Background()
+	ctx := b.Context()
 
 	// Create the prefix gatherer passed to the VM and register it with the top-level,
 	// labeled gatherer.
@@ -150,11 +192,15 @@ func benchmarkReexecuteRange(b *testing.B, blockDir string, currentStateDir stri
 	consensusRegistry := prometheus.NewRegistry()
 	r.NoError(prefixGatherer.Register("avalanche_snowman", consensusRegistry))
 
-	if metricsEnabled {
-		collectRegistry(b, "c-chain-reexecution", time.Minute, prefixGatherer, labels)
-	}
-
 	log := tests.NewDefaultLogger("c-chain-reexecution")
+
+	if metricsServerEnabled {
+		serverAddr := startServer(b, log, prefixGatherer, metricsPort)
+
+		if metricsCollectorEnabled {
+			startCollector(b, log, "c-chain-reexecution", labels, serverAddr)
+		}
+	}
 
 	var (
 		vmDBDir      = filepath.Join(currentStateDir, "db")
@@ -312,9 +358,10 @@ type vmExecutorConfig struct {
 }
 
 type vmExecutor struct {
-	config  vmExecutorConfig
-	vm      block.ChainVM
-	metrics *consensusMetrics
+	config     vmExecutorConfig
+	vm         block.ChainVM
+	metrics    *consensusMetrics
+	etaTracker *timer.EtaTracker
 }
 
 func newVMExecutor(vm block.ChainVM, config vmExecutorConfig) (*vmExecutor, error) {
@@ -327,6 +374,10 @@ func newVMExecutor(vm block.ChainVM, config vmExecutorConfig) (*vmExecutor, erro
 		vm:      vm,
 		metrics: metrics,
 		config:  config,
+		// ETA tracker uses a 10-sample moving window to smooth rate estimates,
+		// and a 1.2 slowdown factor to slightly pad ETA early in the run,
+		// tapering to 1.0 as progress approaches 100%.
+		etaTracker: timer.NewEtaTracker(10, 1.2),
 	}, nil
 }
 
@@ -363,6 +414,10 @@ func (e *vmExecutor) executeSequence(ctx context.Context, blkChan <-chan blockRe
 		zap.Uint64("height", blk.Height()),
 	)
 
+	// Initialize ETA tracking with a baseline sample at 0 progress
+	totalWork := e.config.EndBlock - e.config.StartBlock
+	e.etaTracker.AddSample(0, totalWork, start)
+
 	if e.config.ExecutionTimeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, e.config.ExecutionTimeout)
@@ -375,15 +430,20 @@ func (e *vmExecutor) executeSequence(ctx context.Context, blkChan <-chan blockRe
 		}
 
 		if blkResult.Height%1000 == 0 {
-			eta := timer.EstimateETA(
-				start,
-				blkResult.Height-e.config.StartBlock,
-				e.config.EndBlock-e.config.StartBlock,
-			)
-			e.config.Log.Info("executing block",
-				zap.Uint64("height", blkResult.Height),
-				zap.Duration("eta", eta),
-			)
+			completed := blkResult.Height - e.config.StartBlock
+			etaPtr, progressPercentage := e.etaTracker.AddSample(completed, totalWork, time.Now())
+			if etaPtr != nil {
+				e.config.Log.Info("executing block",
+					zap.Uint64("height", blkResult.Height),
+					zap.Float64("progress_pct", progressPercentage),
+					zap.Duration("eta", *etaPtr),
+				)
+			} else {
+				e.config.Log.Info("executing block",
+					zap.Uint64("height", blkResult.Height),
+					zap.Float64("progress_pct", progressPercentage),
+				)
+			}
 		}
 		if err := e.execute(ctx, blkResult.BlockBytes); err != nil {
 			return err
@@ -516,18 +576,41 @@ func newConsensusMetrics(registry prometheus.Registerer) (*consensusMetrics, err
 	return m, nil
 }
 
-// collectRegistry starts prometheus and collects metrics from the provided gatherer.
-// Attaches the provided labels + GitHub labels if available to the collected metrics.
-func collectRegistry(tb testing.TB, name string, timeout time.Duration, gatherer prometheus.Gatherer, labels map[string]string) {
+// startServer starts a Prometheus server for the provided gatherer and returns
+// the server address.
+func startServer(
+	tb testing.TB,
+	log logging.Logger,
+	gatherer prometheus.Gatherer,
+	port uint64,
+) string {
 	r := require.New(tb)
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	tb.Cleanup(cancel)
-
-	r.NoError(tmpnet.StartPrometheus(ctx, tests.NewDefaultLogger("prometheus")))
-
-	server, err := tests.NewPrometheusServer(gatherer)
+	server, err := tests.NewPrometheusServerWithPort(gatherer, port)
 	r.NoError(err)
+
+	log.Info("metrics endpoint available",
+		zap.String("url", fmt.Sprintf("http://%s/ext/metrics", server.Address())),
+	)
+
+	tb.Cleanup(func() {
+		r.NoError(server.Stop())
+	})
+
+	return server.Address()
+}
+
+// startCollector starts a Prometheus collector configured to scrape the server
+// listening on serverAddr. startCollector also attaches the provided labels +
+// Github labels if available to the collected metrics.
+func startCollector(tb testing.TB, log logging.Logger, name string, labels map[string]string, serverAddr string) {
+	r := require.New(tb)
+
+	startPromCtx, cancel := context.WithTimeout(tb.Context(), tests.DefaultTimeout)
+	defer cancel()
+
+	logger := tests.NewDefaultLogger("prometheus")
+	r.NoError(tmpnet.StartPrometheus(startPromCtx, logger))
 
 	var sdConfigFilePath string
 	tb.Cleanup(func() {
@@ -535,25 +618,43 @@ func collectRegistry(tb testing.TB, name string, timeout time.Duration, gatherer
 		// This default delay is set above the default scrape interval used by StartPrometheus.
 		time.Sleep(tmpnet.NetworkShutdownDelay)
 
-		r.NoError(errors.Join(
-			server.Stop(),
-			func() error {
-				if sdConfigFilePath != "" {
-					return os.Remove(sdConfigFilePath)
-				}
-				return nil
-			}(),
-		))
+		r.NoError(func() error {
+			if sdConfigFilePath != "" {
+				return os.Remove(sdConfigFilePath)
+			}
+			return nil
+		}(),
+		)
+
+		//nolint:usetesting // t.Context() is already canceled inside the cleanup function
+		checkMetricsCtx, cancel := context.WithTimeout(context.Background(), tests.DefaultTimeout)
+		defer cancel()
+		r.NoError(tmpnet.CheckMetricsExist(checkMetricsCtx, logger, networkUUID))
 	})
 
-	sdConfigFilePath, err = tmpnet.WritePrometheusSDConfig(name, tmpnet.SDConfig{
-		Targets: []string{server.Address()},
+	sdConfigFilePath, err := tmpnet.WritePrometheusSDConfig(name, tmpnet.SDConfig{
+		Targets: []string{serverAddr},
 		Labels:  labels,
 	}, true /* withGitHubLabels */)
 	r.NoError(err)
+
+	var (
+		dashboardPath = "d/Gl1I20mnk/c-chain"
+		grafanaURI    = tmpnet.DefaultBaseGrafanaURI + dashboardPath
+		startTime     = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	)
+
+	log.Info("metrics available via grafana",
+		zap.String(
+			"url",
+			tmpnet.NewGrafanaURI(networkUUID, startTime, "", grafanaURI),
+		),
+	)
 }
 
-func parseLabels(labelsStr string) (map[string]string, error) {
+// parseCustomLabels parses a comma-separated list of key-value pairs into a map
+// of custom labels.
+func parseCustomLabels(labelsStr string) (map[string]string, error) {
 	labels := make(map[string]string)
 	if labelsStr == "" {
 		return labels, nil

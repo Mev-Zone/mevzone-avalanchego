@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mev-zone/coreth/plugin/evm/upgrade/cortina"
 	"github.com/ava-labs/libevm/accounts/abi"
 	"github.com/ava-labs/libevm/common"
 	"github.com/ava-labs/libevm/core/types"
@@ -21,6 +22,7 @@ import (
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/tests/fixture/e2e"
 	"github.com/ava-labs/avalanchego/tests/fixture/tmpnet"
+	"github.com/ava-labs/avalanchego/vms/evm/acp176"
 )
 
 // This test uses the compiled bytecode for `consume_gas.sol` as well as its ABI
