@@ -94,7 +94,8 @@ if [[ "${DOCKER_IMAGE}" == *"/"* ]]; then
 
   # A populated DOCKER_USERNAME env var triggers login
   if [[ -n "${DOCKER_USERNAME:-}" ]]; then
-    echo "$DOCKER_PASS" | docker login --username "$DOCKER_USERNAME" --password-stdin
+    registry="${DOCKER_IMAGE%%/*}"
+    echo "$DOCKER_PASS" | docker login "$registry" --username "$DOCKER_USERNAME" --password-stdin
   fi
 else
   # Build a single-arch image since the image name does not include a slash which
