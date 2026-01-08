@@ -95,9 +95,20 @@ type environment struct {
 	start time.Time // Time that block building began
 }
 
+// discard terminates the background prefetcher go-routine. It should
+// always be called for all created environment instances otherwise
+// the go-routine leak can happen.
+func (env *environment) discard() {
+	if env.state == nil {
+		return
+	}
+	env.state.StopPrefetcher()
+}
+
 // worker is the main object which takes care of submitting new work to consensus engine
 // and gathering the sealing result.
 type worker struct {
+	bidFetcher  BidFetcher
 	config      *Config
 	chainConfig *params.ChainConfig
 	engine      consensus.Engine
@@ -130,6 +141,10 @@ func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus
 	}
 
 	return worker
+}
+
+func (w *worker) setBestBidFetcher(fetcher BidFetcher) {
+	w.bidFetcher = fetcher
 }
 
 // setEtherbase sets the etherbase used to initialize the block coinbase field.
@@ -196,7 +211,7 @@ func (w *worker) commitNewWork(predicateContext *precompileconfig.PredicateConte
 		return nil, fmt.Errorf("failed to prepare header for mining: %w", err)
 	}
 
-	env, err := w.createCurrentEnvironment(predicateContext, parent, header, tstart)
+	env, err := w.createCurrentEnvironment(predicateContext, parent, header, tstart, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new current environment: %w", err)
 	}
@@ -249,6 +264,7 @@ func (w *worker) commitNewWork(predicateContext *precompileconfig.PredicateConte
 			localBlobTxs[account] = txs
 		}
 	}
+	balanceBefore := env.state.GetBalance(env.header.Coinbase)
 	// Fill the block with all available pending transactions.
 	if len(localPlainTxs) > 0 || len(localBlobTxs) > 0 {
 		plainTxs := newTransactionsByPriceAndNonce(env.signer, localPlainTxs, env.header.BaseFee)
@@ -263,10 +279,84 @@ func (w *worker) commitNewWork(predicateContext *precompileconfig.PredicateConte
 		w.commitTransactions(env, plainTxs, blobTxs, env.header.Coinbase)
 	}
 
+	if w.bidFetcher != nil {
+		currentBurn := new(uint256.Int).Sub(env.state.GetBalance(env.header.Coinbase), balanceBefore)
+		bestBid := w.bidFetcher.GetFinalBid(header, currentBurn)
+		if bestBid != nil {
+			env.discard()
+			env = bestBid.env
+		}
+	}
+
 	return w.commit(env)
 }
 
-func (w *worker) createCurrentEnvironment(predicateContext *precompileconfig.PredicateContext, parent *types.Header, header *types.Header, tstart time.Time) (*environment, error) {
+func (w *worker) createEnvironment(predicateCtx *precompileconfig.PredicateContext, parentHash common.Hash) (*environment, error) {
+	var (
+		parent      = w.chain.CurrentBlock()
+		chainExtra  = params.GetExtra(w.chainConfig)
+		tstart      = customheader.GetNextTimestamp(parent, w.clock.Time())
+		timestamp   = uint64(tstart.Unix())
+		timestampMS = uint64(tstart.UnixMilli())
+	)
+
+	if parentHash != (common.Hash{}) {
+		if blk := w.chain.GetBlockByHash(parentHash); blk != nil {
+			parent = blk.Header()
+		} else {
+			return nil, errors.New("missing parent")
+		}
+	}
+
+	header := &types.Header{
+		ParentHash: parent.Hash(),
+		Number:     new(big.Int).Add(parent.Number, common.Big1),
+		Time:       timestamp,
+	}
+
+	if chainExtra.IsGranite(timestamp) {
+		headerExtra := customtypes.GetHeaderExtra(header)
+		headerExtra.TimeMilliseconds = &timestampMS
+	}
+
+	gasLimit, err := customheader.GasLimit(chainExtra, parent, timestampMS)
+	if err != nil {
+		return nil, fmt.Errorf("calculating new gas limit: %w", err)
+	}
+	header.GasLimit = gasLimit
+
+	baseFee, err := customheader.BaseFee(chainExtra, parent, timestampMS)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate new base fee: %w", err)
+	}
+	header.BaseFee = baseFee
+
+	// Apply EIP-4844, EIP-4788.
+	if w.chainConfig.IsCancun(header.Number, header.Time) {
+		var excessBlobGas uint64
+		if w.chainConfig.IsCancun(parent.Number, parent.Time) {
+			excessBlobGas = eip4844.CalcExcessBlobGas(*parent.ExcessBlobGas, *parent.BlobGasUsed)
+		} else {
+			// For the first post-fork block, both parent.data_gas_used and parent.excess_data_gas are evaluated as 0
+			excessBlobGas = eip4844.CalcExcessBlobGas(0, 0)
+		}
+		header.BlobGasUsed = new(uint64)
+		header.ExcessBlobGas = &excessBlobGas
+		header.ParentBeaconRoot = w.beaconRoot
+	}
+
+	if w.coinbase == (common.Address{}) {
+		return nil, errors.New("cannot mine without etherbase")
+	}
+	header.Coinbase = w.coinbase
+	if err := w.engine.Prepare(w.chain, header); err != nil {
+		return nil, fmt.Errorf("failed to prepare header for mining: %w", err)
+	}
+
+	return w.createCurrentEnvironment(predicateCtx, parent, header, tstart, false)
+}
+
+func (w *worker) createCurrentEnvironment(predicateContext *precompileconfig.PredicateContext, parent *types.Header, header *types.Header, tstart time.Time, enablePrefetch bool) (*environment, error) {
 	currentState, err := w.chain.StateAt(parent.Root)
 	if err != nil {
 		return nil, err
@@ -300,8 +390,10 @@ func (w *worker) createCurrentEnvironment(predicateContext *precompileconfig.Pre
 			return nil, fmt.Errorf("%w: %d waiting for %d", ErrInsufficientGasCapacityToBuild, capacity, minimumBuildableCapacity)
 		}
 	}
-	numPrefetchers := w.chain.CacheConfig().TriePrefetcherParallelism
-	currentState.StartPrefetcher("miner", extstate.WithConcurrentWorkers(numPrefetchers))
+	if enablePrefetch {
+		numPrefetchers := w.chain.CacheConfig().TriePrefetcherParallelism
+		currentState.StartPrefetcher("miner", extstate.WithConcurrentWorkers(numPrefetchers))
+	}
 	return &environment{
 		signer:           types.MakeSigner(w.chainConfig, header.Number, header.Time),
 		state:            currentState,

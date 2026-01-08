@@ -57,13 +57,22 @@ type Miner struct {
 }
 
 func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *event.TypeMux, engine consensus.Engine, clock *mockable.Clock) *Miner {
-	return &Miner{
+	miner := &Miner{
 		worker: newWorker(config, chainConfig, engine, eth, mux, clock),
 	}
+
+	bs := newBidSimulator(eth.TxPool().GasTip(), eth, eth.BlockChain().Config(), miner.worker)
+	miner.worker.setBestBidFetcher(bs)
+
+	return miner
 }
 
 func (miner *Miner) SetEtherbase(addr common.Address) {
 	miner.worker.setEtherbase(addr)
+}
+
+func (miner *Miner) BidFetcher() BidFetcher {
+	return miner.worker.bidFetcher
 }
 
 func (miner *Miner) GenerateBlock(predicateContext *precompileconfig.PredicateContext) (*types.Block, error) {

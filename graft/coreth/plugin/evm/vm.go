@@ -28,7 +28,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	// Force-load precompiles to trigger registration
+	"github.com/ava-labs/avalanchego/graft/coreth/mev"
 	_ "github.com/ava-labs/avalanchego/graft/coreth/precompile/registry"
+
 	// Force-load tracer engine to trigger registration
 	//
 	// We must import this package (not referenced elsewhere) so that the native "callTracer"
@@ -1055,7 +1057,7 @@ func (*VM) Version(context.Context) (string, error) {
 }
 
 // CreateHandlers makes new http handlers that can handle API calls
-func (vm *VM) CreateHandlers(context.Context) (map[string]http.Handler, error) {
+func (vm *VM) CreateHandlers(ctx context.Context) (map[string]http.Handler, error) {
 	handler := rpc.NewServer(vm.config.APIMaxDuration.Duration)
 	if vm.config.BatchRequestLimit > 0 && vm.config.BatchResponseMaxSize > 0 {
 		handler.SetBatchLimits(int(vm.config.BatchRequestLimit), int(vm.config.BatchResponseMaxSize))
@@ -1088,6 +1090,21 @@ func (vm *VM) CreateHandlers(context.Context) (map[string]http.Handler, error) {
 			return nil, err
 		}
 		enabledAPIs = append(enabledAPIs, "warp")
+	}
+
+	if vm.config.MevAPIEnabled {
+		mevBackend, err := mev.NewBackend(
+			vm.ctx,
+			vm.config.Mev,
+			vm.eth.APIBackend,
+			vm.eth.BlockChain().Config(),
+		)
+		if err != nil {
+			return nil, err
+		}
+		bf := vm.eth.Miner().BidFetcher()
+		bf.Init(ctx, mevBackend, vm.config.Mev, vm.ctx)
+		mevBackend.SetBidSimulator(bf)
 	}
 
 	log.Info("enabling apis",

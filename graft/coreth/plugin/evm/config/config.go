@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/libevm/common/hexutil"
 	"github.com/spf13/cast"
 
+	"github.com/ava-labs/avalanchego/graft/coreth/mev"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/avalanchego/vms/components/gas"
 )
@@ -37,6 +38,7 @@ type Config struct {
 	AdminAPIEnabled bool   `json:"admin-api-enabled"`
 	AdminAPIDir     string `json:"admin-api-dir"`
 	WarpAPIEnabled  bool   `json:"warp-api-enabled"`
+	MevAPIEnabled   bool   `json:"mev-api-enabled"`
 
 	// EnabledEthAPIs is a list of Ethereum services that should be enabled
 	// If none is specified, then we use the default list [defaultEnabledAPIs]
@@ -180,6 +182,9 @@ type Config struct {
 
 	// Database Scheme
 	StateScheme string `json:"state-scheme"`
+
+	// MEV settings
+	Mev mev.Config `json:"mev"`
 }
 
 // GetConfig returns a new config object with the default values set and the
