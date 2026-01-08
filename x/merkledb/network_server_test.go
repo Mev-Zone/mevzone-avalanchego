@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package merkledb
@@ -24,7 +24,7 @@ import (
 func Test_Server_GetRangeProof(t *testing.T) {
 	now := time.Now().UnixNano()
 	t.Logf("seed: %d", now)
-	r := rand.New(rand.NewSource(now)) // #nosec G404
+	r := rand.New(rand.NewSource(now))
 
 	smallTrieDB, err := generateTrieWithMinKeyLen(t, r, xsync.DefaultRequestKeyLimit, 1)
 	require.NoError(t, err)
@@ -151,7 +151,7 @@ func Test_Server_GetChangeProof(t *testing.T) {
 
 	now := time.Now().UnixNano()
 	t.Logf("seed: %d", now)
-	r := rand.New(rand.NewSource(now)) // #nosec G404
+	r := rand.New(rand.NewSource(now))
 
 	serverDB, err := New(
 		t.Context(),

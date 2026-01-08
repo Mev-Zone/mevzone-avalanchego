@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package platformvm
@@ -167,7 +167,13 @@ func (vm *VM) Initialize(
 		Bootstrapped: &vm.bootstrapped,
 	}
 
-	mempool, err := pmempool.New("mempool", registerer)
+	mempool, err := pmempool.New(
+		"mempool",
+		vm.Internal.DynamicFeeConfig.Weights,
+		execConfig.MempoolGasCapacity,
+		vm.ctx.AVAXAssetID,
+		registerer,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create mempool: %w", err)
 	}

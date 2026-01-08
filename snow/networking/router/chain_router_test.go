@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package router
@@ -101,7 +101,7 @@ func TestShutdown(t *testing.T) {
 		"",
 		prometheus.NewRegistry(),
 		nil,
-		version.CurrentApp,
+		version.Current,
 	)
 	require.NoError(err)
 
@@ -228,7 +228,7 @@ func TestConnectedAfterShutdownErrorLogRegression(t *testing.T) {
 		"",
 		prometheus.NewRegistry(),
 		nil,
-		version.CurrentApp,
+		version.Current,
 	)
 	require.NoError(err)
 
@@ -302,7 +302,7 @@ func TestConnectedAfterShutdownErrorLogRegression(t *testing.T) {
 	// Calling connected after shutdown should result in an error log.
 	chainRouter.Connected(
 		ids.GenerateTestNodeID(),
-		version.CurrentApp,
+		version.Current,
 		ids.GenerateTestID(),
 	)
 }
@@ -362,7 +362,7 @@ func TestShutdownTimesOut(t *testing.T) {
 		"",
 		prometheus.NewRegistry(),
 		nil,
-		version.CurrentApp,
+		version.Current,
 	)
 	require.NoError(err)
 
@@ -532,7 +532,7 @@ func TestRouterTimeout(t *testing.T) {
 		"",
 		prometheus.NewRegistry(),
 		nil,
-		version.CurrentApp,
+		version.Current,
 	)
 	require.NoError(err)
 
@@ -932,8 +932,8 @@ func TestRouterClearTimeouts(t *testing.T) {
 	tests := []struct {
 		name        string
 		responseOp  message.Op
-		responseMsg message.InboundMessage
-		timeoutMsg  message.InboundMessage
+		responseMsg *message.InboundMessage
+		timeoutMsg  *message.InboundMessage
 	}{
 		{
 			name:        "StateSummaryFrontier",
@@ -1065,7 +1065,7 @@ func TestValidatorOnlyMessageDrops(t *testing.T) {
 		"",
 		prometheus.NewRegistry(),
 		nil,
-		version.CurrentApp,
+		version.Current,
 	)
 	require.NoError(err)
 
@@ -1129,7 +1129,7 @@ func TestValidatorOnlyMessageDrops(t *testing.T) {
 	}
 	h.Start(t.Context(), false)
 
-	var inMsg message.InboundMessage
+	var inMsg *message.InboundMessage
 	dummyContainerID := ids.GenerateTestID()
 	reqID := uint32(0)
 
@@ -1232,7 +1232,7 @@ func TestValidatorOnlyAllowedNodeMessageDrops(t *testing.T) {
 		"",
 		prometheus.NewRegistry(),
 		nil,
-		version.CurrentApp,
+		version.Current,
 	)
 	require.NoError(err)
 
@@ -1290,7 +1290,7 @@ func TestValidatorOnlyAllowedNodeMessageDrops(t *testing.T) {
 	}
 	h.Start(t.Context(), false)
 
-	var inMsg message.InboundMessage
+	var inMsg *message.InboundMessage
 	dummyContainerID := ids.GenerateTestID()
 	reqID := uint32(0)
 
@@ -1359,8 +1359,8 @@ func TestAppRequest(t *testing.T) {
 	tests := []struct {
 		name       string
 		responseOp message.Op
-		timeoutMsg message.InboundMessage
-		inboundMsg message.InboundMessage
+		timeoutMsg *message.InboundMessage
+		inboundMsg *message.InboundMessage
 	}{
 		{
 			name:       "AppRequest - chain response",
@@ -1389,7 +1389,7 @@ func TestAppRequest(t *testing.T) {
 			chainRouter, engine := newChainRouterTest(t)
 
 			wg.Add(1)
-			if tt.inboundMsg == nil || tt.inboundMsg.Op() == message.AppErrorOp {
+			if tt.inboundMsg == nil || tt.inboundMsg.Op == message.AppErrorOp {
 				engine.AppRequestFailedF = func(_ context.Context, nodeID ids.NodeID, requestID uint32, appErr *common.AppError) error {
 					defer wg.Done()
 					chainRouter.lock.Lock()
@@ -1403,7 +1403,7 @@ func TestAppRequest(t *testing.T) {
 
 					return nil
 				}
-			} else if tt.inboundMsg.Op() == message.AppResponseOp {
+			} else if tt.inboundMsg.Op == message.AppResponseOp {
 				engine.AppResponseF = func(_ context.Context, nodeID ids.NodeID, requestID uint32, msg []byte) error {
 					defer wg.Done()
 					chainRouter.lock.Lock()
@@ -1485,7 +1485,7 @@ func newChainRouterTest(t *testing.T) (*ChainRouter, *enginetest.Engine) {
 		"",
 		prometheus.NewRegistry(),
 		nil,
-		version.CurrentApp,
+		version.Current,
 	)
 	require.NoError(t, err)
 
@@ -1600,8 +1600,8 @@ func TestHandleSimplexMessage(t *testing.T) {
 
 	var receivedMsg bool
 	h.EXPECT().Push(gomock.Any(), gomock.Any()).
-		Do(func(_ context.Context, msg message.InboundMessage) {
-			if msg.Op() == message.SimplexOp {
+		Do(func(_ context.Context, msg handler.Message) {
+			if msg.Op == message.SimplexOp {
 				receivedMsg = true
 			}
 		}).AnyTimes()

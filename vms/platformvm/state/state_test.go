@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package state
@@ -1463,7 +1463,6 @@ func TestPutAndGetFeeState(t *testing.T) {
 	require.NoError(err)
 	require.Equal(gas.State{}, defaultFeeState)
 
-	//nolint:gosec // This does not require a secure random number generator
 	expectedFeeState := gas.State{
 		Capacity: gas.Gas(rand.Uint64()),
 		Excess:   gas.Gas(rand.Uint64()),

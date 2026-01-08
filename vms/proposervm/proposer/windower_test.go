@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package proposer
@@ -143,7 +143,7 @@ func TestDelayChangeByChain(t *testing.T) {
 	require := require.New(t)
 
 	source := rand.NewSource(int64(0))
-	rng := rand.New(source) // #nosec G404
+	rng := rand.New(source)
 
 	chainID0 := ids.Empty
 	_, err := rng.Read(chainID0[:])
@@ -216,7 +216,7 @@ func TestExpectedProposerChangeByChain(t *testing.T) {
 	require := require.New(t)
 
 	source := rand.NewSource(int64(0))
-	rng := rand.New(source) // #nosec G404
+	rng := rand.New(source)
 
 	chainID0 := ids.Empty
 	_, err := rng.Read(chainID0[:])

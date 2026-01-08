@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package sync
@@ -53,7 +53,7 @@ func Test_Midpoint(t *testing.T) {
 	require.Equal(maybe.Some([]byte{255, 127, 127}), mid)
 
 	for i := 0; i < 5000; i++ {
-		r := rand.New(rand.NewSource(int64(i))) // #nosec G404
+		r := rand.New(rand.NewSource(int64(i)))
 
 		start := make([]byte, r.Intn(99)+1)
 		_, err := r.Read(start)

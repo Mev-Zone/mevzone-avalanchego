@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package info
@@ -140,7 +140,7 @@ func (i *Info) GetNodeVersion(_ *http.Request, _ *struct{}, reply *GetNodeVersio
 	}
 
 	reply.Version = i.Version.String()
-	reply.DatabaseVersion = version.CurrentDatabase.String()
+	reply.DatabaseVersion = version.CurrentDatabase
 	reply.RPCProtocolVersion = json.Uint32(version.RPCChainVMProtocol)
 	reply.GitCommit = version.GitCommit
 	reply.VMVersions = vmVersions

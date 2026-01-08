@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package config
@@ -93,6 +93,7 @@ func TestConfigUnmarshal(t *testing.T) {
 			L1SubnetIDNodeIDCacheSize:     13,
 			ChecksumsEnabled:              true,
 			MempoolPruneFrequency:         time.Minute,
+			MempoolGasCapacity:            14,
 		}
 		verifyInitializedStruct(t, *expected)
 		verifyInitializedStruct(t, expected.Network)

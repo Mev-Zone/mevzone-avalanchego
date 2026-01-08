@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package tracker
@@ -24,7 +24,7 @@ func TestPeers(t *testing.T) {
 	p.OnValidatorAdded(nodeID, nil, ids.Empty, 5)
 	require.Zero(p.ConnectedWeight())
 
-	require.NoError(p.Connected(t.Context(), nodeID, version.CurrentApp))
+	require.NoError(p.Connected(t.Context(), nodeID, version.Current))
 	require.Equal(uint64(5), p.ConnectedWeight())
 
 	p.OnValidatorWeightChanged(nodeID, 5, 10)

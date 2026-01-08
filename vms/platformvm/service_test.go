@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2025, Ava Labs, Inc. All rights reserved.
+// Copyright (C) 2019-2026, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package platformvm
@@ -639,7 +639,7 @@ func TestGetCurrentValidators(t *testing.T) {
 	for _, validatorTx := range genesis.Validators[:len(genesis.Validators)-1] {
 		validator := validatorTx.Unsigned.(*txs.AddValidatorTx)
 		connectedIDs.Add(validator.NodeID())
-		require.NoError(service.vm.Connected(t.Context(), validator.NodeID(), version.CurrentApp))
+		require.NoError(service.vm.Connected(t.Context(), validator.NodeID(), version.Current))
 	}
 
 	require.NoError(service.GetCurrentValidators(nil, &args, &response))
