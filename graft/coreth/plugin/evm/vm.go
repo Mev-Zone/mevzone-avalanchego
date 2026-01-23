@@ -77,6 +77,7 @@ import (
 	"github.com/ava-labs/avalanchego/utils/profiler"
 	"github.com/ava-labs/avalanchego/utils/timer/mockable"
 	"github.com/ava-labs/avalanchego/utils/units"
+	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/components/chain"
 	"github.com/ava-labs/avalanchego/vms/components/gas"
 	"github.com/ava-labs/avalanchego/vms/evm/acp176"
@@ -296,7 +297,7 @@ func (vm *VM) Initialize(
 	}
 	vm.logger = corethLogger
 
-	log.Info("Initializing Coreth VM", "Version", Version, "libevm version", ethparams.LibEVMVersion, "Config", vm.config)
+	log.Info("Initializing Coreth VM", "Version", version.Current.Semantic(), "libevm version", ethparams.LibEVMVersion, "Config", vm.config)
 
 	if deprecateMsg != "" {
 		log.Warn("Deprecation Warning", "msg", deprecateMsg)
@@ -523,7 +524,7 @@ func (vm *VM) initializeMetrics() error {
 
 func (vm *VM) initializeChain(lastAcceptedHash common.Hash) error {
 	nodecfg := &node.Config{
-		CorethVersion:         Version,
+		CorethVersion:         version.Current.Semantic(),
 		KeyStoreDir:           vm.config.KeystoreDirectory,
 		ExternalSigner:        vm.config.KeystoreExternalSigner,
 		InsecureUnlockAllowed: vm.config.KeystoreInsecureUnlockAllowed,
@@ -1013,7 +1014,7 @@ func (vm *VM) GetBlockIDAtHeight(_ context.Context, height uint64) (ids.ID, erro
 }
 
 func (*VM) Version(context.Context) (string, error) {
-	return Version, nil
+	return version.Current.Semantic(), nil
 }
 
 // CreateHandlers makes new http handlers that can handle API calls
