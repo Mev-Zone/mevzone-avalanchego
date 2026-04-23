@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/ava-labs/avalanchego/graft/coreth/mev/types"
-	"github.com/ava-labs/avalanchego/graft/coreth/rpc"
+	"github.com/ava-labs/avalanchego/graft/evm/rpc"
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.

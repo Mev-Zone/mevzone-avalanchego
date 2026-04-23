@@ -14,6 +14,7 @@ import (
 	"github.com/ava-labs/avalanchego/graft/coreth/params"
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/version"
 	"github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/libevm/common"
 	types2 "github.com/ava-labs/libevm/core/types"
@@ -257,7 +258,7 @@ func (m *backend) MevParams() (*types3.HexParams, error) {
 	p := &types3.MevParams{
 		ValidatorCommission: m.config.ValidatorCommission,
 		ValidatorWallet:     m.config.ValidatorWallet,
-		Version:             params.Version,
+		Version:             version.Current.Semantic(),
 	}
 
 	return m.sign(p)

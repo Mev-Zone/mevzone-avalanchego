@@ -19,7 +19,7 @@ import (
 	types2 "github.com/ava-labs/avalanchego/graft/coreth/mev/types"
 	"github.com/ava-labs/avalanchego/graft/coreth/params"
 	"github.com/ava-labs/avalanchego/graft/coreth/precompile/precompileconfig"
-	"github.com/ava-labs/avalanchego/graft/coreth/rpc"
+	"github.com/ava-labs/avalanchego/graft/evm/rpc"
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/libevm/common"
 	"github.com/ava-labs/libevm/core/types"

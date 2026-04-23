@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanchego/snow"
 	"github.com/ava-labs/avalanchego/snow/snowtest"
 	"github.com/ava-labs/avalanchego/utils/crypto/bls"
+	"github.com/ava-labs/avalanchego/version"
 	avalancheWarp "github.com/ava-labs/avalanchego/vms/platformvm/warp"
 	"github.com/ava-labs/libevm/common"
 	"github.com/ava-labs/libevm/common/hexutil"
@@ -95,7 +96,7 @@ func TestBackend_MevParams(t *testing.T) {
 	require.Equal(t, payload, types.MevParams{
 		ValidatorCommission: config.ValidatorCommission,
 		ValidatorWallet:     config.ValidatorWallet,
-		Version:             params.Version,
+		Version:             version.Current.Semantic(),
 	})
 }
 
