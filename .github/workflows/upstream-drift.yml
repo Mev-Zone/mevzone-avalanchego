@@ -1,0 +1,79 @@
+name: Upstream Drift Check
+
+# Early-warning for divergence from ava-labs/avalanchego. Weekly (and on
+# demand) it trial-merges the newest unmerged upstream release tag, counts
+# the conflicts, and opens/updates a tracking issue. Keeping this number
+# small is the whole point — merge upstream releases promptly.
+# See docs/upstream-merge.md.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      target_tag:
+        description: 'Specific upstream tag to test-merge (default: newest unmerged)'
+        required: false
+        type: string
+      tag_glob:
+        description: 'Glob of upstream tags to consider'
+        required: false
+        default: 'v*'
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+concurrency:
+  group: upstream-drift
+  cancel-in-progress: true
+
+jobs:
+  drift:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + branch tip needed for a real trial merge
+
+      - name: Configure git identity (for trial merge)
+        run: |
+          git config user.name  "upstream-drift-bot"
+          git config user.email "upstream-drift-bot@users.noreply.github.com"
+
+      - name: Check upstream drift
+        id: drift
+        env:
+          UPSTREAM_TAG_GLOB: ${{ github.event.inputs.tag_glob || 'v*' }}
+          REPORT_FILE: ${{ runner.temp }}/drift-report.md
+        run: |
+          ./scripts/check_upstream_drift.sh "${{ github.event.inputs.target_tag }}" > "${REPORT_FILE}"
+          cat "${REPORT_FILE}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update tracking issue
+        if: steps.drift.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_FILE: ${{ runner.temp }}/drift-report.md
+          TARGET: ${{ steps.drift.outputs.target }}
+          CONFLICTS: ${{ steps.drift.outputs.conflicts }}
+        run: |
+          gh label create upstream-drift \
+            --color FBCA04 \
+            --description "Automated upstream merge-drift reports" 2>/dev/null || true
+
+          title="Upstream drift: ${TARGET} unmerged (${CONFLICTS} conflicts)"
+          existing="$(gh issue list --state open --label upstream-drift \
+            --json number --jq '.[0].number' 2>/dev/null || true)"
+
+          if [ -n "${existing}" ]; then
+            gh issue edit "${existing}" --title "${title}" --body-file "${REPORT_FILE}"
+            gh issue comment "${existing}" \
+              --body "🔄 Refreshed by the scheduled drift check (run ${GITHUB_RUN_ID}). See the updated issue body above."
+          else
+            gh issue create --title "${title}" --label upstream-drift --body-file "${REPORT_FILE}"
+          fi

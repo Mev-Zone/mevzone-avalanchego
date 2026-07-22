@@ -13,6 +13,7 @@ require (
 	github.com/ava-labs/firewood-go-ethhash/ffi v0.8.0
 	github.com/ava-labs/libevm v1.13.15-0.20260721184559-5557c68d296b
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
+	github.com/deckarep/golang-set/v2 v2.1.0
 	github.com/go-cmd/cmd v1.4.3
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/go-bexpr v0.1.10
@@ -61,7 +62,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/crate-crypto/go-ipa v0.0.0-20231025140028-3c0104f4b233 // indirect
 	github.com/crate-crypto/go-kzg-4844 v1.1.0 // indirect
-	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/dop251/goja v0.0.0-20230806174421-c933cf95e127 // indirect
